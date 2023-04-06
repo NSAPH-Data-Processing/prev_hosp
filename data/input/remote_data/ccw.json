@@ -1,6 +1,8 @@
 {
-    "alzheimer": 
+    "alzh": 
       {
+        "name": "Alzheimer's Disease",
+        "ref_period": 3,
         "icd9": ["3310"],
         "icd10": ["G300","G301","G308","G309"]
       }
