@@ -16,6 +16,6 @@ mkdir /n/dominici_nsaph_l3/Lab/projects/analytic/ccw_proxy
 ln -s /n/dominici_nsaph_l3/Lab/projects/analytic/ccw_proxy .
 
 cd $HOME_DIR/src/
-job01=$(sbatch ALZH.sbatch)
+job01=$(sbatch alzh.sbatch)
 
 ```
