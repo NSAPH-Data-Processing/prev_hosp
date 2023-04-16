@@ -8,7 +8,7 @@ import argparse
 
 import duckdb
 
-# diagnoses && ARRAY is not supported in duckdb
+# diagnoses && ARRAY[] is not supported in duckdb
 
 def read_ccw_json(ccw_json, condition):
     with open(ccw_json, 'r') as json_file:
@@ -42,23 +42,35 @@ def get_years_in_ref_period(ref_year, ref_period, first_year):
 
 def get_years_before_ref_year(ref_year, first_year):
     return [year for year in range(first_year, ref_year + 1)]
-    
-def prepare_data(dw_bene_prefix, dw_adm_prefix, diag_string, ref_year, ref_period, first_year, conn):
-    
-    print("## Preparing cc ----")
-    diag_files = [f"{dw_adm_prefix}_{year}.parquet" for year in get_years_in_ref_period(ref_year, ref_period, first_year)]
+
+def prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, conn, claims_criteria='all'):
+    diag_files = [f"{dw_adm_prefix}_{year}.parquet" for year in get_years_in_ref_period(ref_year, ref_period, args["first_year"])]
     diag_queries = []
 
-    for file in diag_files:
-        q = f"""
-            SELECT DISTINCT
-                bene_id,
-                admission_date, 
-                diag 
+    if claims_criteria == 'all':
+        for file in diag_files:
+            query = f"""
+            SELECT DISTINCT bene_id, admission_date 
             FROM '{file}', UNNEST(diagnoses) AS adm(diag)
             WHERE adm.diag IN ({diag_string})
-        """
-        diag_queries.append(q)
+            """
+            diag_queries.append(query)
+    elif claims_criteria == 'primary':
+        for file in diag_files:
+            query = f"""
+            SELECT DISTINCT bene_id, admission_date
+            FROM '{file}'
+            WHERE diagnoses[1] IN ({diag_string})
+            """
+            diag_queries.append(query)
+    elif claims_criteria == 'first_two':
+        for file in diag_files:
+            query = f"""
+            SELECT DISTINCT bene_id, admission_date 
+            FROM '{file}'
+            WHERE diagnoses[1, 2] IN ({diag_string})
+            """
+            diag_queries.append(query)
 
     diag_query = " UNION ALL ".join(diag_queries)
 
@@ -70,85 +82,100 @@ def prepare_data(dw_bene_prefix, dw_adm_prefix, diag_string, ref_year, ref_perio
         FROM diag
         GROUP BY bene_id
         """
+        
+    #print query
+    print(cc_query)
 
-    cc = conn.execute(cc_query).fetchdf()
-    print(cc.shape)
+    cc_df = conn.execute(cc_query).fetchdf()
+    print(cc_df.shape)
 
+    return cc_df
+
+def prepare_adm(dw_adm_prefix, diag_string, ref_year, first_year, conn):
     print("## Preparing adm ----")
-    diag_files = [f"{dw_adm_prefix}_{year}.parquet" for year in get_years_before_ref_year(2005, 2000)]
-    adm = []
+    diag_files = [f"{dw_adm_prefix}_{year}.parquet" for year in range(first_year, ref_year)]
+    
+    #print query
     for file in diag_files:
-        diag = conn.execute(f"""
+        diag_query = f"""
             SELECT DISTINCT
                 bene_id,
                 admission_date, 
                 diag 
             FROM '{file}', UNNEST(diagnoses) AS adm(diag)
             WHERE adm.diag IN ({diag_string})
-        """).fetchdf()
-        adm.append(diag)
-    
-    adm = pd.concat(adm)
-    adm = adm[['bene_id', 'admission_date']].groupby('bene_id').min().reset_index()
-    adm.rename({'admission_date': 'min_adm_date'}, axis=1, inplace=True)
-    print(adm.shape)
-
-    print("## Preparing ffs ----")
-
-    hmo_files = [f"{dw_bene_prefix}_{year}.parquet" for year in get_years_in_ref_period(ref_year, ref_period, first_year)]
-    hmo_queries = []
-    for file in hmo_files:
-        q = f"""
-            SELECT
-                bene_id,
-                year, 
-                SUM(hmo_mo) as hmo_y 
-            FROM '{file}'
-            GROUP BY 
-                bene_id, year
         """
-        hmo_queries.append(q)
-    hmo_query = " UNION ALL ".join(hmo_queries)
+        print(diag_query) 
+    
+    adm_df = pd.concat([
+        conn.execute(f"""
+            SELECT DISTINCT bene_id, admission_date, diag 
+            FROM '{file}', UNNEST(diagnoses) AS adm(diag)
+            WHERE adm.diag IN ({diag_string})
+            """
+        ).fetchdf() for file in diag_files
+    ])
+    adm_df = adm[['bene_id', 'admission_date']].groupby('bene_id').min().reset_index()
+    adm_df.rename(columns={'admission_date': 'min_adm_date'}, inplace=True)
+    print(adm_df.shape)
+    return(adm_df)
 
+def prepare_ffs(dw_bene_prefix, ref_year, ref_period, conn):
+    print("## Preparing ffs ----")
+    hmo_files = [f"{dw_bene_prefix}_{year}.parquet" for year in range(ref_year, ref_year - ref_period, -1)]
+    hmo_queries = [
+        f"""
+        SELECT bene_id, year, SUM(hmo_mo) as hmo_y 
+        FROM '{file}'
+        GROUP BY bene_id, year
+        """
+        for file in hmo_files
+    ]
+    hmo_query = ' UNION ALL '.join(hmo_queries)
     ffs_query = f"""
         WITH hmo AS ({hmo_query}) 
-        SELECT 
-            bene_id,
-            CASE WHEN SUM(hmo_y) = 0 THEN 1 ELSE 0 END AS ffs_coverage
+        SELECT bene_id, CASE WHEN SUM(hmo_y) = 0 THEN 1 ELSE 0 END AS ffs_coverage
         FROM hmo
         GROUP BY bene_id
         """
+    #print query
+    print(ffs_query)
+    
+    ffs_df = conn.execute(ffs_query).fetchdf()
+    print(ffs_df.shape)
+    return ffs_df
 
-    ffs = conn.execute(ffs_query).fetchdf()
-    print(ffs.shape)
+def prepare_data(dw_bene_prefix, dw_adm_prefix, diag_string, ref_year, ref_period, first_year, conn, claims_criteria='all'):
+    cc_df = prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, conn, claims_criteria)
+    adm_df = prepare_adm(dw_adm_prefix, diag_string, ref_year, first_year, conn)
+    ffs_df = prepare_ffs(dw_bene_prefix, ref_year, ref_period, conn)
 
     print("## Preparing bene ----")
-
-    bene = conn.execute(f"""
-         SELECT 
-              bene_id, 
-              year as rfrnc_yr
+    bene_query = f"""
+         SELECT bene_id, year as rfrnc_yr
          FROM '{dw_bene_prefix}_{ref_year}.parquet'
-    """).fetchdf()
-    print(bene.shape)
-
+    """
+    #print query
+    print(bene_query)
+    df = conn.execute(bene_query).fetchdf()
+    print(df.shape)
+    
     print("## Identify beneficiaries who satisfy the claims condition ----")
-    bene = bene.merge(cc, on='bene_id', how='left')
-    bene['claims_criteria'] = bene['claims_criteria'].fillna(0)
+    df = df.merge(cc_df, on='bene_id', how='left')
+    df['claims_criteria'] = df['claims_criteria'].fillna(0)
 
     print("## Identify beneficiaries who satisfy the FFS condition ----")
-    bene = bene.merge(ffs, on='bene_id', how='left')
+    df = df.merge(ffs_df, on='bene_id', how='left')
     ## how to handle missing values? leave as NA for now
 
     print("## Get CCW proxy ----")
-    bene['condition'] = bene.apply(get_ccw_proxy_for_row, axis=1)
-    
+    df['condition'] = df.apply(get_ccw_proxy_for_row, axis=1)
+
     print("## Merge beneficiaries first admission date ----")
-    bene = bene.merge(adm[['bene_id', 'min_adm_date']], on='bene_id', how='left')
-    bene = bene.drop(['ffs_coverage', 'claims_criteria'], axis=1)
-
-    return(bene)
-
+    df = df.merge(adm_df[['bene_id', 'min_adm_date']], on='bene_id', how='left')
+    df = df.drop(['ffs_coverage', 'claims_criteria'], axis=1)
+    
+    return df
 
 def main(args):
     print(f"## Reading {args.condition} from {args.ccw_json} ----")
@@ -158,18 +185,28 @@ def main(args):
     
     conn = duckdb.connect()
     
-    print("## Reading data ----")
-    bene = prepare_data(args.dw_bene_prefix, args.dw_adm_prefix, diag_string, args.year, ref_period, args.first_year, conn)
-    bene.rename(columns={'condition': args.condition, 'min_adm_date': f"{args.condition}_ever"})
+    print("## Preparing data ----")
+    df = prepare_data(
+        args.dw_bene_prefix, 
+        args.dw_adm_prefix, 
+        diag_string, 
+        args.year, 
+        ref_period, 
+        args.first_year, 
+        conn, 
+        args.claims_criteria)
+    df.rename(columns={'condition': args.condition, 'min_adm_date': f"{args.condition}_ever"})
     
     print("## Writing data ----")
+    output_file = f"{args.output_prefix}_{args.condition}_{args.year}.{args.output_format}"
     if args.output_format == "parquet":
-        bene.to_parquet(f"{args.output_prefix}_{args.condition}_{args.year}.parquet")
+        bene.to_parquet(output_file)
     elif args.output_format == "feather":
-        bene.to_feather(f"{args.output_prefix}_{args.condition}_{args.year}.feather")
+        bene.to_feather(output_file)
     elif args.output_format == "csv":
-        bene.to_csv(f"{args.output_prefix}_{args.condition}_{args.year}.csv", index=False)
+        bene.to_csv(output_file, index=False)
 
+    print(f"## Output file written to {output_file}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -198,6 +235,10 @@ if __name__ == "__main__":
                    )   
     parser.add_argument("--first_year", 
                         default = 2000
+                       ) 
+    parser.add_argument("--claims_criteria", 
+                        default = "all", 
+                        choices=["all", "primary", "first_two"]
                        )     
     args = parser.parse_args()
     
