@@ -44,7 +44,7 @@ def get_years_before_ref_year(ref_year, first_year):
     return [year for year in range(first_year, ref_year + 1)]
 
 def prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, conn, claims_criteria='all'):
-    diag_files = [f"{dw_adm_prefix}_{year}.parquet" for year in get_years_in_ref_period(ref_year, ref_period, args["first_year"])]
+    diag_files = [f"{dw_adm_prefix}_{year}.parquet" for year in get_years_in_ref_period(ref_year, ref_period, args.first_year)]
     diag_queries = []
 
     if claims_criteria == 'all':
@@ -88,13 +88,15 @@ def prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, conn, claims_cr
 
     cc_df = conn.execute(cc_query).fetchdf()
     print(cc_df.shape)
-
+    print(cc_df.head())
     return cc_df
 
 def prepare_adm(dw_adm_prefix, diag_string, ref_year, first_year, conn):
     print("## Preparing adm ----")
     diag_files = [f"{dw_adm_prefix}_{year}.parquet" for year in range(first_year, ref_year)]
-    
+    print(diag_files)
+    print("first year: ", first_year)
+    print("ref year: ", ref_year)
     #print query
     for file in diag_files:
         diag_query = f"""
@@ -105,8 +107,9 @@ def prepare_adm(dw_adm_prefix, diag_string, ref_year, first_year, conn):
             FROM '{file}', UNNEST(diagnoses) AS adm(diag)
             WHERE adm.diag IN ({diag_string})
         """
-        print(diag_query) 
-    
+        print(diag_query)
+        print("testing point")
+
     adm_df = pd.concat([
         conn.execute(f"""
             SELECT DISTINCT bene_id, admission_date, diag 
@@ -115,7 +118,7 @@ def prepare_adm(dw_adm_prefix, diag_string, ref_year, first_year, conn):
             """
         ).fetchdf() for file in diag_files
     ])
-    adm_df = adm[['bene_id', 'admission_date']].groupby('bene_id').min().reset_index()
+    adm_df = adm_df[['bene_id', 'admission_date']].groupby('bene_id').min().reset_index()
     adm_df.rename(columns={'admission_date': 'min_adm_date'}, inplace=True)
     print(adm_df.shape)
     return(adm_df)
@@ -200,11 +203,11 @@ def main(args):
     print("## Writing data ----")
     output_file = f"{args.output_prefix}_{args.condition}_{args.year}.{args.output_format}"
     if args.output_format == "parquet":
-        bene.to_parquet(output_file)
+        df.to_parquet(output_file)
     elif args.output_format == "feather":
-        bene.to_feather(output_file)
+        df.to_feather(output_file)
     elif args.output_format == "csv":
-        bene.to_csv(output_file, index=False)
+        df.to_csv(output_file, index=False)
 
     print(f"## Output file written to {output_file}")
 
