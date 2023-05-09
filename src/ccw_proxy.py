@@ -19,10 +19,32 @@ def read_ccw_json(ccw_json, condition):
         "," +
         ",".join([f"'{x}'" for x in ccw_dict[condition]["icd10"]])
     )
+    
+    icd9_exclusion = ccw_dict[condition].get("icd9_exclusion", [])
+    icd10_exclusion = ccw_dict[condition].get("icd10_exclusion", [])
+
+    exclusion_list = []
+    if icd9_exclusion:
+        exclusion_list.extend(icd9_exclusion)
+    if icd10_exclusion:
+        exclusion_list.extend(icd10_exclusion)
+
+    if icd9_exclusion and icd10_exclusion:
+        exclusion_string = ",".join([f"'{x}'" for x in exclusion_list])
+    elif icd10_exclusion:
+        exclusion_string = f"'{exclusion_list[0]}'"
+    else:
+        exclusion_string = ""
+        
+        
+    print("this is diag_string")
+    print(diag_string)
+    print("this is the exclusion string")
+    print(exclusion_string)
 
     ref_period = ccw_dict[condition]["ref_period"]
 
-    return ref_period, diag_string
+    return ref_period, diag_string, exclusion_string
 
 def get_ccw_proxy_for_row(row):
     if row['claims_criteria'] == 0 and row['ffs_coverage'] == 0:
@@ -43,8 +65,11 @@ def get_years_in_ref_period(ref_year, ref_period, first_year):
 def get_years_before_ref_year(ref_year, first_year):
     return [year for year in range(first_year, ref_year + 1)]
 
-def prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, conn, claims_criteria='all'):
+def prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, conn, exclusion_string, claims_criteria='all'):
     diag_files = [f"{dw_adm_prefix}_{year}.parquet" for year in get_years_in_ref_period(ref_year, ref_period, args.first_year)]
+    print("ini di prepare_cc")
+    print(diag_files)
+    print("atas itu diag_files")
     diag_queries = []
 
     if claims_criteria == 'all':
@@ -73,15 +98,45 @@ def prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, conn, claims_cr
             diag_queries.append(query)
 
     diag_query = " UNION ALL ".join(diag_queries)
-
-    cc_query = f"""
-        WITH diag AS ({diag_query}) 
-        SELECT 
-            bene_id, 
-            1 as claims_criteria
-        FROM diag
-        GROUP BY bene_id
-        """
+    
+    if exclusion_string: 
+        print(exclusion_string)
+    else: 
+        print("there is no exclusion_string")
+    
+    if exclusion_string:
+        cc_query = f"""
+            WITH diag AS ({diag_query}) 
+            SELECT 
+                bene_id, 
+                1 as claims_criteria
+            FROM diag
+            WHERE bene_id NOT IN (
+                SELECT DISTINCT bene_id, admission_date 
+                FROM '{file}', UNNEST(diagnoses) AS adm(diag)
+                WHERE adm.diag IN ({exclusion_string})           
+            )
+            GROUP BY bene_id
+            """
+    else:
+        cc_query = f"""
+            WITH diag AS ({diag_query}) 
+            SELECT 
+                bene_id, 
+                1 as claims_criteria
+            FROM diag
+            GROUP BY bene_id
+            """
+    
+    
+#     cc_query = f"""
+#         WITH diag AS ({diag_query}) 
+#         SELECT 
+#             bene_id, 
+#             1 as claims_criteria
+#         FROM diag
+#         GROUP BY bene_id
+#         """
         
     #print query
     print(cc_query)
@@ -148,8 +203,8 @@ def prepare_ffs(dw_bene_prefix, ref_year, ref_period, conn):
     print(ffs_df.shape)
     return ffs_df
 
-def prepare_data(dw_bene_prefix, dw_adm_prefix, diag_string, ref_year, ref_period, first_year, conn, claims_criteria='all'):
-    cc_df = prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, conn, claims_criteria)
+def prepare_data(dw_bene_prefix, dw_adm_prefix, diag_string, ref_year, ref_period, first_year, conn,exclusion_string, claims_criteria='all'):
+    cc_df = prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, conn, exclusion_string, claims_criteria)
     adm_df = prepare_adm(dw_adm_prefix, diag_string, ref_year, first_year, conn)
     ffs_df = prepare_ffs(dw_bene_prefix, ref_year, ref_period, conn)
 
@@ -182,9 +237,10 @@ def prepare_data(dw_bene_prefix, dw_adm_prefix, diag_string, ref_year, ref_perio
 
 def main(args):
     print(f"## Reading {args.condition} from {args.ccw_json} ----")
-    ref_period, diag_string = read_ccw_json(args.ccw_json, args.condition)
+    ref_period, diag_string, exclusion_string = read_ccw_json(args.ccw_json, args.condition)
     print(f"## Reference period: {ref_period} ----")
     print(f"## Diagnoses: {diag_string} ----")
+    print(f"## Exclusion: {exclusion_string} ----")
     
     conn = duckdb.connect()
     
@@ -197,7 +253,9 @@ def main(args):
         ref_period, 
         args.first_year, 
         conn, 
-        args.claims_criteria)
+        exclusion_string,
+        args.claims_criteria
+        )
     df.rename(columns={'condition': args.condition, 'min_adm_date': f"{args.condition}_ever"})
     
     print("## Writing data ----")
@@ -242,7 +300,7 @@ if __name__ == "__main__":
     parser.add_argument("--claims_criteria", 
                         default = "all", 
                         choices=["all", "primary", "first_two"]
-                       )     
+                       ) 
     args = parser.parse_args()
     
     main(args)
