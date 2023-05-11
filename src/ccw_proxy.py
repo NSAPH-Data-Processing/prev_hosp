@@ -100,6 +100,7 @@ def prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, conn, exclusion
     diag_query = " UNION ALL ".join(diag_queries)
     
     if exclusion_string: 
+        print("yayy masuk ketemu exclusion nyaa")
         print(exclusion_string)
     else: 
         print("there is no exclusion_string")
@@ -112,7 +113,7 @@ def prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, conn, exclusion
                 1 as claims_criteria
             FROM diag
             WHERE bene_id NOT IN (
-                SELECT DISTINCT bene_id, admission_date 
+                SELECT DISTINCT bene_id 
                 FROM '{file}', UNNEST(diagnoses) AS adm(diag)
                 WHERE adm.diag IN ({exclusion_string})           
             )
@@ -148,7 +149,7 @@ def prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, conn, exclusion
 
 def prepare_adm(dw_adm_prefix, diag_string, ref_year, first_year, conn):
     print("## Preparing adm ----")
-    diag_files = [f"{dw_adm_prefix}_{year}.parquet" for year in range(first_year, ref_year)]
+    diag_files = [f"{dw_adm_prefix}_{year}.parquet" for year in range(first_year, ref_year+1)]
     print(diag_files)
     print("first year: ", first_year)
     print("ref year: ", ref_year)
