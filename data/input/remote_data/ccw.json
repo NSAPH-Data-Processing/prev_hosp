@@ -337,7 +337,17 @@
         "name": "Cancer, Endometrial",
         "ref_period": 1,
         "icd9": ["1820", "2332", "V1042"],
-        "icd10": ["C541", "C542", "C543", "C548", "C549", "D070", "Z8542"]
+        "icd10": ["C541", "C542", "C543", "C548", "C549", "D070", "Z8542"],
+        "icd10_exclusion": ["D291"]
+    },
+    "benignProstaticHyperplasia":
+    {
+        "name": "Benign Prostatic Hyperplasia",
+        "ref_period": 1,
+        "icd9": ["60000", "60010", "60011","60020", "60021", "6003","60090", "60091" ],
+        "icd9_exclusion": ["2222"], 
+        "icd10": ["N400", "N401", "N402", "N403", "N4283"],
+        "icd10_exclusion": ["D291"]
     }
 }
 
