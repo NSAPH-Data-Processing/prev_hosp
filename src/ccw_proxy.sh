@@ -1,0 +1,16 @@
+sbatch ami.sbatch
+#sbatch alzh.sbatch
+sbatch alzhdmta.sbatch
+sbatch atrialfb.sbatch
+sbatch cataract.sbatch
+sbatch chrnkidn.sbatch
+sbatch copd.sbatch
+sbatch chf.sbatch
+sbatch diabetes.sbatch
+sbatch glaucoma.sbatch
+sbatch hipfrac.sbatch
+sbatch ischmcht.sbatch
+sbatch depressn.sbatch
+sbatch osteoprs.sbatch
+sbatch ra_oa.sbatch
+sbatch benignProstalticHyperplasia.sbatch
