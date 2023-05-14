@@ -8,4 +8,4 @@
 
 module load Anaconda3/2022.05
 source activate dorieh
-python ccw_proxy.py --year $SLURM_ARRAY_TASK_ID --condition "benignProstaticHyperplasia" --ccw_json "../data/input/remote_data/ccw.json"
+python ccw_proxy.py --year $SLURM_ARRAY_TASK_ID --condition "benignProstaticHyperplasia"
