@@ -8,4 +8,4 @@
 
 module load Anaconda3/2022.05
 source activate dorieh
-python ccw_proxy.py --year $SLURM_ARRAY_TASK_ID --condition "depressn" --ccw_json "../data/input/remote_data/ccw_copy.json"
+python ccw_proxy.py --year $SLURM_ARRAY_TASK_ID --condition "depressn"

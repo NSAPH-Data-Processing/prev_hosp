@@ -7,5 +7,5 @@
 #SBATCH --array=2000-2016
 
 module load Anaconda3/2022.05
-source activate dorieh
-python ccw_proxy.py --year $SLURM_ARRAY_TASK_ID --condition "ischmcht"
+source activate medicare_QC
+python ccw_proxy.py --year $SLURM_ARRAY_TASK_ID --condition "cataract" --claims_criteria "primary"
