@@ -1,0 +1,20 @@
+name: ccw_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - fastparquet=0.5.0=py310ha9d4c09_2
+  - numpy=1.21.5=py310h1794996_3
+  - numpy-base=1.21.5=py310hcba007f_3
+  - pandas=1.5.1=py310h1128e8f_0
+  - pillow=9.2.0=py310hace64e9_1
+  - pip=22.2.2=py310h06a4308_0
+  - ply=3.11=py310h06a4308_0
+  - python=3.10.8=h7a1cb2a_1
+  - python-dateutil=2.8.2=pyhd3eb1b0_0
+  - pytz=2022.1=py310h06a4308_0
+  - pip:
+    - duckdb==0.7.1
+    - pyqt5-sip==12.11.0
+    - pyyaml==6.0
+prefix: /n/home_fasse/nsardana/.conda/envs/ccw_env
