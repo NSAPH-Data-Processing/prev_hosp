@@ -1,11 +1,7 @@
-import numpy as np
+# Description: This file contains the functions to calculate the CCW proxy for a given condition.
 import pandas as pd
-
 import json
-import os
-import sys
 import argparse
-
 import duckdb
 
 # diagnoses && ARRAY[] is not supported in duckdb
@@ -65,11 +61,9 @@ def get_years_in_ref_period(ref_year, ref_period, first_year):
 def get_years_before_ref_year(ref_year, first_year):
     return [year for year in range(first_year, ref_year + 1)]
 
-def prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, conn, exclusion_string, claims_criteria='all'):
-    diag_files = [f"{dw_adm_prefix}_{year}.parquet" for year in get_years_in_ref_period(ref_year, ref_period, args.first_year)]
-    print("ini di prepare_cc")
-    print(diag_files)
-    print("atas itu diag_files")
+def prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, first_year, conn, exclusion_string, claims_criteria='all'):
+    diag_files = [f"{dw_adm_prefix}_{year}.parquet" for year in get_years_in_ref_period(ref_year, ref_period, first_year)]
+    print("files: ", diag_files)
     diag_queries = []
 
     if claims_criteria == 'all':
@@ -93,12 +87,13 @@ def prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, conn, exclusion
             query = f"""
             SELECT DISTINCT bene_id, admission_date 
             FROM '{file}'
-            WHERE diagnoses[1, 2] IN ({diag_string})
+            WHERE diagnoses[1] IN ({diag_string}) OR diagnoses[2] IN ({diag_string})
             """
             diag_queries.append(query)
 
     diag_query = " UNION ALL ".join(diag_queries)
-    
+    print("diag_query:", diag_query)
+
     if exclusion_string: 
         print("yayy masuk ketemu exclusion nyaa")
         print(exclusion_string)
@@ -128,18 +123,7 @@ def prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, conn, exclusion
             FROM diag
             GROUP BY bene_id
             """
-    
-    
-#     cc_query = f"""
-#         WITH diag AS ({diag_query}) 
-#         SELECT 
-#             bene_id, 
-#             1 as claims_criteria
-#         FROM diag
-#         GROUP BY bene_id
-#         """
-        
-    #print query
+    print("cc_query:")
     print(cc_query)
 
     cc_df = conn.execute(cc_query).fetchdf()
@@ -149,11 +133,11 @@ def prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, conn, exclusion
 
 def prepare_adm(dw_adm_prefix, diag_string, ref_year, first_year, conn):
     print("## Preparing adm ----")
-    diag_files = [f"{dw_adm_prefix}_{year}.parquet" for year in range(first_year, ref_year+1)]
-    print(diag_files)
-    print("first year: ", first_year)
-    print("ref year: ", ref_year)
-    #print query
+    diag_files = [f"{dw_adm_prefix}_{year}.parquet" for year in get_years_before_ref_year(ref_year, first_year)]
+    print("files: ", diag_files)
+
+    #### ####
+    #start print query
     for file in diag_files:
         diag_query = f"""
             SELECT DISTINCT
@@ -164,7 +148,8 @@ def prepare_adm(dw_adm_prefix, diag_string, ref_year, first_year, conn):
             WHERE adm.diag IN ({diag_string})
         """
         print(diag_query)
-        print("testing point")
+    #end print query
+    #### ####
 
     adm_df = pd.concat([
         conn.execute(f"""
@@ -179,9 +164,11 @@ def prepare_adm(dw_adm_prefix, diag_string, ref_year, first_year, conn):
     print(adm_df.shape)
     return(adm_df)
 
-def prepare_ffs(dw_bene_prefix, ref_year, ref_period, conn):
+def prepare_ffs(dw_bene_prefix, ref_year, ref_period, first_year, conn):
     print("## Preparing ffs ----")
-    hmo_files = [f"{dw_bene_prefix}_{year}.parquet" for year in range(ref_year, ref_year - ref_period, -1)]
+    hmo_files = [f"{dw_bene_prefix}_{year}.parquet" for year in get_years_in_ref_period(ref_year, ref_period, first_year)]
+    print("files: ", hmo_files)
+
     hmo_queries = [
         f"""
         SELECT bene_id, year, SUM(hmo_mo) as hmo_y 
@@ -205,9 +192,9 @@ def prepare_ffs(dw_bene_prefix, ref_year, ref_period, conn):
     return ffs_df
 
 def prepare_data(dw_bene_prefix, dw_adm_prefix, diag_string, ref_year, ref_period, first_year, conn,exclusion_string, claims_criteria='all'):
-    cc_df = prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, conn, exclusion_string, claims_criteria)
+    cc_df = prepare_cc(dw_adm_prefix, diag_string, ref_year, ref_period, first_year, conn, exclusion_string, claims_criteria)
     adm_df = prepare_adm(dw_adm_prefix, diag_string, ref_year, first_year, conn)
-    ffs_df = prepare_ffs(dw_bene_prefix, ref_year, ref_period, conn)
+    ffs_df = prepare_ffs(dw_bene_prefix, ref_year, ref_period, first_year, conn)
 
     print("## Preparing bene ----")
     bene_query = f"""
@@ -273,11 +260,11 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--year", 
-                        default = 2004, 
+                        default = 2000, 
                         type=int
                        )
     parser.add_argument("--condition", 
-                        default = "alzh",
+                        default = "anemia",
                        )
     parser.add_argument("--ccw_json", 
                         default = "../data/input/remote_data/ccw.json"
