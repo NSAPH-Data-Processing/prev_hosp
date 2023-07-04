@@ -244,16 +244,18 @@ def main(args):
         exclusion_string,
         args.claims_criteria
         )
-    df.rename(columns={'condition': args.condition, 'min_adm_date': f"{args.condition}_ever"})
+    df = df.rename(columns={'condition': args.condition, 'min_adm_date': f"{args.condition}_ever"})
     
     print("## Writing data ----")
+    df = df.set_index(['bene_id'])
+
     output_file = f"{args.output_prefix}_{args.condition}_{args.year}.{args.output_format}"
     if args.output_format == "parquet":
         df.to_parquet(output_file)
     elif args.output_format == "feather":
         df.to_feather(output_file)
     elif args.output_format == "csv":
-        df.to_csv(output_file, index=False)
+        df.to_csv(output_file)
 
     print(f"## Output file written to {output_file}")
 
@@ -264,7 +266,7 @@ if __name__ == "__main__":
                         type=int
                        )
     parser.add_argument("--condition", 
-                        default = "anemia",
+                        default = "stroke",
                        )
     parser.add_argument("--ccw_json", 
                         default = "../data/input/remote_data/ccw.json"
