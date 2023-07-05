@@ -5,6 +5,6 @@ channels:
 dependencies:
   - python=3.10
   - pandas
-  - argparse
-  - json
-  - duckdb=0.7.1
+  - pip
+  - pip:
+    - duckdb==0.7.1
