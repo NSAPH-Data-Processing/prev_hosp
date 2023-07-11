@@ -1,4 +1,3 @@
-# Description: This file contains the functions to calculate the CCW proxy for a given condition.
 import pandas as pd
 import json
 import argparse
@@ -269,13 +268,13 @@ if __name__ == "__main__":
                         default = "stroke",
                        )
     parser.add_argument("--ccw_json", 
-                        default = "../data/input/remote_data/ccw.json"
+                        default = "./data/input/remote_data/ccw.json"
                        )
     parser.add_argument("--dw_bene_prefix", 
-                        default = "../data/input/local_data/data_warehouse/dw_bene_xu_sabath_00_16/bene"
+                        default = "./data/input/local_data/dw_bene_xu_sabath_00_16/bene"
                        )
     parser.add_argument("--dw_adm_prefix", 
-                        default = "../data/input/local_data/data_warehouse/dw_adm_xu_sabath_00_16/adm"
+                        default = "./data/input/local_data/dw_adm_xu_sabath_00_16/adm"
                        )
     parser.add_argument("--output_format", 
                         default = "parquet", 
