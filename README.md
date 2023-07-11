@@ -70,8 +70,8 @@ ln -s /n/dominici_nsaph_l3/Lab/data/data_warehouse/dw_bene_wu_sabath_00_16 .
 ln -s /n/dominici_nsaph_l3/Lab/data/data_warehouse/dw_adm_wu_sabath_00_16 .
 
 cd $HOME_DIR/data/intermediate/
-mkdir /n/dominici_nsaph_l3/Lab/data_processing/ccw_proxy/scratch
-ln -s /n/dominici_nsaph_l3/Lab/data_processing/ccw_proxy/scratch .
+mkdir /n/holyscratch01/LABS/dominici_nsaph/Lab/data_processing/prev_hosp
+ln -s /n/holyscratch01/LABS/dominici_nsaph/Lab/data_processing/prev_hosp .
 
 cd $HOME_DIR/data/output/
 mkdir /n/dominici_nsaph_l3/Lab/projects/analytic/ccw_proxy
