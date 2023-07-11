@@ -1,8 +1,6 @@
-# ccw proxy
+# prev_hosp
 
-Code to generate a proxy of beneficiary-level chronic conditions.
-
-This task depends on previously harmonized input obtained from CMS/Resdac files: the Master Beneficiary Summary Files (MBSF) and the inpatient hospitalizations data (MEDPAR).
+Code to generate previous hospitalizations of beneficiaries is CMS/Resdac files. This task depends on previously harmonized input obtained from CMS/Resdac files: the Master Beneficiary Summary Files (MBSF) and the inpatient hospitalizations data (MEDPAR).
 
 Using a partial approach to the [Chronic Conditions algorithm](https://www2.ccwdata.org/documents/10280/19139421/ccw-chronic-condition-algorithms.pdf) we generate 27 beneficiary-level covariates.
 
@@ -47,14 +45,14 @@ Clone the repository and create a conda environment.
 git clone <https://github.com/<user>/repo>
 cd <repo>
 
-conda env create -f requirements.yaml
+conda env create -f requirements.yml
 conda activate prev_hosp_env
 ```
 
 It is also possible to use `mamba`.
 
 ```bash
-mamba env create -f requirements.yaml
+mamba env create -f requirements.yml
 mamba activate prev_hosp_env
 ```
 
@@ -72,8 +70,8 @@ ln -s /n/dominici_nsaph_l3/Lab/data/data_warehouse/dw_bene_wu_sabath_00_16 .
 ln -s /n/dominici_nsaph_l3/Lab/data/data_warehouse/dw_adm_wu_sabath_00_16 .
 
 cd $HOME_DIR/data/intermediate/
-mkdir /n/dominici_nsaph_l3/Lab/data_processing/ccw_proxy/scratch
-ln -s /n/dominici_nsaph_l3/Lab/data_processing/ccw_proxy/scratch .
+mkdir /n/holyscratch01/LABS/dominici_nsaph/Lab/data_processing/prev_hosp
+ln -s /n/holyscratch01/LABS/dominici_nsaph/Lab/data_processing/prev_hosp .
 
 cd $HOME_DIR/data/output/
 mkdir /n/dominici_nsaph_l3/Lab/projects/analytic/ccw_proxy
