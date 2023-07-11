@@ -271,10 +271,10 @@ if __name__ == "__main__":
                         default = "./data/input/remote_data/ccw.json"
                        )
     parser.add_argument("--dw_bene_prefix", 
-                        default = "./data/input/local_data/dw_bene_xu_sabath_00_16/bene"
+                        default = "./data/input/local_data/dw_bene_wu_sabath_00_16/bene"
                        )
     parser.add_argument("--dw_adm_prefix", 
-                        default = "./data/input/local_data/dw_adm_xu_sabath_00_16/adm"
+                        default = "./data/input/local_data/dw_adm_wu_sabath_00_16/adm"
                        )
     parser.add_argument("--output_format", 
                         default = "parquet", 
