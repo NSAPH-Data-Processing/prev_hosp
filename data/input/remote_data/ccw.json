@@ -356,7 +356,7 @@
       "icd9": ["1820", "2332", "V1042"],
       "icd10": ["C541", "C542", "C543", "C548", "C549", "D070", "Z8542"]
     },
-  "benignProstaticHyperplasia":
+  "hyperp":
     {
       "name": "Benign Prostatic Hyperplasia",
       "ref_period": 1,
