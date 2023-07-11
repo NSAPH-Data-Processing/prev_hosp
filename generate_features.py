@@ -281,7 +281,7 @@ if __name__ == "__main__":
                         choices=["parquet", "feather", "csv"]
                        )           
     parser.add_argument("--output_prefix", 
-                    default = "../data/intermediate/scratch/ccw_proxy"
+                    default = "../data/intermediate/scratch/prev_hosp"
                    )   
     parser.add_argument("--first_year", 
                         default = 2000
