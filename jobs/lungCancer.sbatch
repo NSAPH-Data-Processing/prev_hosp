@@ -6,6 +6,5 @@
 #SBATCH -t 0-02:00 # time (D-HH:MM)
 #SBATCH --array=2000-2016
 
-module load python/3.10.9-fasrc01
-mamba activate prev_hosp_env
-python ccw_proxy.py --year $SLURM_ARRAY_TASK_ID --condition "lungCancer"
+
+python generate_features.py --year $SLURM_ARRAY_TASK_ID --condition "lungCancer"

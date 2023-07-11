@@ -8,4 +8,4 @@
 
 module load Anaconda3/2022.05
 source activate medicare_QC
-python ccw_proxy.py --year $SLURM_ARRAY_TASK_ID --condition "ischmcht"
+python generate_features.py --year $SLURM_ARRAY_TASK_ID --condition "ischmcht"
