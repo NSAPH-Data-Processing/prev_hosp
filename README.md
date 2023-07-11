@@ -74,6 +74,6 @@ mkdir /n/holyscratch01/LABS/dominici_nsaph/Lab/data_processing/prev_hosp
 ln -s /n/holyscratch01/LABS/dominici_nsaph/Lab/data_processing/prev_hosp .
 
 cd $HOME_DIR/data/output/
-mkdir /n/dominici_nsaph_l3/Lab/projects/analytic/ccw_proxy
-ln -s /n/dominici_nsaph_l3/Lab/projects/analytic/ccw_proxy .
+mkdir /n/dominici_nsaph_l3/Lab/projects/analytic/prev_hosp
+ln -s /n/dominici_nsaph_l3/Lab/projects/analytic/prev_hosp .
 ```
