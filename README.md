@@ -99,7 +99,7 @@ cd $HOME_DIR/data/input/ .
 ln -s <input_path> . #paths as found in data/input/README.md
 
 cd $HOME_DIR/data/output/
-ln -s <output_path> . #paths as found in data/input/README.md
+ln -s <output_path> . #paths as found in data/output/README.md
 ```
 
 The README.md files inside the `/data` subfolders contain path documentation for NSAPH internal purposes.
