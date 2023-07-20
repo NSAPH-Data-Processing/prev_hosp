@@ -4,30 +4,35 @@ import itertools
 with open("data/input/remote_data/ccw.json", "r") as f:
     conditions = json.load(f)
 conditions = list(conditions.keys())
-years = list(range(2000, 2016))
+years = list(range(2000, 2017))
 
 rule all:
     input:
-        expand("data/intermediate/prev_hosp/prev_hosp_{condition}_{year}.parquet", condition=conditions, year=years) 
+        expand("data/output/prev_hosp/prev_hosp_{year}.parquet", year=years) 
 
 rule generate:
     output:
         "data/intermediate/prev_hosp/prev_hosp_{condition}_{year}.parquet"
     log:
-        out=".logs/{condition}_{year}.out", 
-        err=".logs/{condition}_{year}.err"
+        out=".logs_generate/{condition}_{year}.out", 
+        err=".logs_generate/{condition}_{year}.err"
     shell:
         """
         python generate_features.py --year {wildcards.year} --condition {wildcards.condition} 1> {log.out} 2> {log.err}
         """
 
-# rule merge:
-#     input:
-#         output_files  # This rule requires all the output files from the condition rules
-#     shell:
-#         """
-#         python merge_features.py
-#         """
+rule merge:
+    input:
+        expand("data/intermediate/prev_hosp/prev_hosp_{condition}_{year}.parquet", condition=conditions, year=years)
+    output:
+        "data/output/prev_hosp/prev_hosp_{year}.parquet"
+    log:
+        out=".logs_merge/{year}.out", 
+        err=".logs_merge/{year}.err"
+    shell:
+        """
+        python merge_features.py --year {wildcards.year} 1> {log.out} 2> {log.err}
+        """
 
 # import json
 # import itertools
