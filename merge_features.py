@@ -1,36 +1,45 @@
 import argparse
 import json
 import duckdb
+import pyarrow.parquet as pq
 
 def main(args):
     with open(args.ccw_json, 'r') as json_file:
         ccw_dict = json.load(json_file)
 
     conditions_list = list(ccw_dict.keys())
-    conditions_list.remove('stroke')
 
     # Connect to the database
     con_ccw = duckdb.connect()
     
     # Define the initial SQL query using the first table as the base table
     c_ = conditions_list[0]
+
     print(f"## Merging {c_} ----")
-    query = f"SELECT bene_id, {c_} FROM '{args.input_prefix}_{c_}_{args.year}.parquet'"
+    #df = pq.read_table(f"{args.input_prefix}_{c_}_{args.year}.parquet").to_pandas()
+    # print(f"## {df.shape[0]} rows in {c_}")
+    # print(f"## {df.shape[1]} columns in {c_}")
+    # print(df.columns)
+    # print(f"## {df.memory_usage().sum() / 1e6} MB memory usage in {c_}")
+    # print(f"## {df.memory_usage().sum() / df.shape[0]} bytes per row in {c_}")
+    # print(f"## {df.memory_usage().sum() / df.shape[1]} bytes per column in {c_}")
+    
+    query = f"SELECT bene_id, {c_}, {c_}_ever FROM '{args.input_prefix}_{c_}_{args.year}.parquet'"
     result = con_ccw.execute(query).fetchdf()
-    result.to_parquet(f"ccw_proxy_{args.year}.parquet")
+    result.to_parquet(f"{args.scratch_prefix}_{args.year}.parquet")
 
     # Iterate over the remaining tables and perform left joins
     for i_ in range(1, len(conditions_list)):
         c_ = conditions_list[i_]
         print(f"## Merging {c_} ----")
-        query = f"SELECT bene_id, {c_} FROM '{args.input_prefix}_{c_}_{args.year}.parquet'"
+        query = f"SELECT bene_id, {c_}, {c_}_ever FROM '{args.input_prefix}_{c_}_{args.year}.parquet'"
         # Update the query with the left join
         result = con_ccw.execute(f"""
             SELECT * FROM ({query})
-            INNER JOIN 'ccw_proxy_{args.year}.parquet'
+            INNER JOIN '{args.scratch_prefix}_{args.year}.parquet'
             USING(bene_id)
         """).fetchdf()
-        result.to_parquet(f"ccw_proxy_{args.year}.parquet")
+        result.to_parquet(f"{args.scratch_prefix}_{args.year}.parquet")
 
     print("## Writing data ----")
     result = result.set_index(['bene_id'])
@@ -56,18 +65,24 @@ if __name__ == '__main__':
         type=int)
     parser.add_argument(
         '--input_prefix',
-        default="../data/intermediate/scratch/ccw_proxy", 
+        default="./data/intermediate/prev_hosp/prev_hosp", 
         help='Prefix of input file')
     parser.add_argument(
         '--output_prefix',
-        default="../data/output/ccw_proxy/ccw_proxy",
+        default="./data/output/prev_hosp/prev_hosp",
+        help='Prefix of output file')
+    parser.add_argument(
+        '--scratch_prefix',
+        default="./data/intermediate/prev_hosp/prev_hosp",
         help='Prefix of output file')
     parser.add_argument(
         "--ccw_json", 
-        default = "../data/input/remote_data/ccw.json")
+        default = "./data/input/remote_data/ccw.json")
     parser.add_argument(
         "--output_format", 
-        default = "csv", 
+        default = "parquet", 
         choices=["parquet", "feather", "csv"])  
     args = parser.parse_args()
     main(args)
+
+# python merge_features.py --year 2000 --input_prefix ./data/intermediate/prev_hosp/prev_hosp --output_prefix ./data/output/prev_hosp/prev_hosp --ccw_json ./data/input/remote_data/ccw.json --output_format parquet
