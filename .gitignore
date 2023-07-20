@@ -1,7 +1,7 @@
-####
-# Slurm
-####
+# pipeline
 **/slurm*.out
+.logs*
+.snakemake/**
 
 ####
 # Python
