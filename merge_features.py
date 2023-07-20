@@ -1,7 +1,7 @@
 import argparse
 import json
 import duckdb
-import pyarrow.parquet as pq
+#import pyarrow.parquet as pq
 
 def main(args):
     with open(args.ccw_json, 'r') as json_file:
