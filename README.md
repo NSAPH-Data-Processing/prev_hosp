@@ -106,10 +106,16 @@ The README.md files inside the `/data` subfolders contain path documentation for
 
 ### Pipeline
 
-Run the script for all years:
+Run the `generate_counts.py` script for all years:
 
 ```bash
 python ./src/generate_counts.py --year <year>
+```
+
+then run 
+
+```bash
+python ./src/merge_counts.py
 ```
 
 or run the pipeline:
