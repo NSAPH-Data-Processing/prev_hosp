@@ -6,5 +6,5 @@
 #SBATCH -t 0-02:00 # time (D-HH:MM)
 #SBATCH --array=2000-2016
 
-# conda activate prev_hosp_env
+
 python generate_features.py --year $SLURM_ARRAY_TASK_ID --condition "stroke"
