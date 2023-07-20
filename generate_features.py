@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import json
 import argparse
@@ -30,8 +31,7 @@ def read_ccw_json(ccw_json, condition):
         exclusion_string = f"'{exclusion_list[0]}'"
     else:
         exclusion_string = ""
-        
-        
+    
     print("this is diag_string")
     print(diag_string)
     print("this is the exclusion string")
@@ -39,17 +39,30 @@ def read_ccw_json(ccw_json, condition):
 
     ref_period = ccw_dict[condition]["ref_period"]
 
-    return ref_period, diag_string, exclusion_string
+    claims_criteria = ccw_dict[condition].get("claims_criteria", "all")
 
-def get_ccw_proxy_for_row(row):
-    if row['claims_criteria'] == 0 and row['ffs_coverage'] == 0:
-        return 0
-    elif row['claims_criteria'] == 1 and row['ffs_coverage'] == 0:
-        return 1
-    elif row['claims_criteria'] == 0 and row['ffs_coverage'] == 1:
-        return 2
-    else:
-        return 3
+    return ref_period, claims_criteria, diag_string, exclusion_string
+
+# def get_ccw_proxy_for_row(row):
+#     if row['claims_criteria'] == 0 and row['ffs_coverage'] == 0:
+#         return 0
+#     elif row['claims_criteria'] == 1 and row['ffs_coverage'] == 0:
+#         return 1
+#     elif row['claims_criteria'] == 0 and row['ffs_coverage'] == 1:
+#         return 2
+#     else:
+#         return 3
+    
+def get_ccw_proxy_df(df):
+    conditions = [
+        (df['claims_criteria'] == 0) & (df['ffs_coverage'] == 0), 
+        (df['claims_criteria'] == 1) & (df['ffs_coverage'] == 0), 
+        (df['claims_criteria'] == 0) & (df['ffs_coverage'] == 1)
+    ]
+    choices = [0, 1, 2]
+    df['condition'] = np.select(conditions, choices, default=3)
+    
+    return df
 
 def get_years_in_ref_period(ref_year, ref_period, first_year):
     years_in_ref_period = [ref_year - i for i in range(ref_period)]
@@ -161,6 +174,7 @@ def prepare_adm(dw_adm_prefix, diag_string, ref_year, first_year, conn):
     adm_df = adm_df[['bene_id', 'admission_date']].groupby('bene_id').min().reset_index()
     adm_df.rename(columns={'admission_date': 'min_adm_date'}, inplace=True)
     print(adm_df.shape)
+    print(adm_df.head())
     return(adm_df)
 
 def prepare_ffs(dw_bene_prefix, ref_year, ref_period, first_year, conn):
@@ -214,7 +228,8 @@ def prepare_data(dw_bene_prefix, dw_adm_prefix, diag_string, ref_year, ref_perio
     ## how to handle missing values? leave as NA for now
 
     print("## Get CCW proxy ----")
-    df['condition'] = df.apply(get_ccw_proxy_for_row, axis=1)
+    #df['condition'] = df.apply(get_ccw_proxy_for_row, axis=1)
+    df = get_ccw_proxy_df(df)
 
     print("## Merge beneficiaries first admission date ----")
     df = df.merge(adm_df[['bene_id', 'min_adm_date']], on='bene_id', how='left')
@@ -224,7 +239,7 @@ def prepare_data(dw_bene_prefix, dw_adm_prefix, diag_string, ref_year, ref_perio
 
 def main(args):
     print(f"## Reading {args.condition} from {args.ccw_json} ----")
-    ref_period, diag_string, exclusion_string = read_ccw_json(args.ccw_json, args.condition)
+    ref_period, claims_criteria, diag_string, exclusion_string = read_ccw_json(args.ccw_json, args.condition)
     print(f"## Reference period: {ref_period} ----")
     print(f"## Diagnoses: {diag_string} ----")
     print(f"## Exclusion: {exclusion_string} ----")
@@ -241,7 +256,7 @@ def main(args):
         args.first_year, 
         conn, 
         exclusion_string,
-        args.claims_criteria
+        claims_criteria
         )
     df = df.rename(columns={'condition': args.condition, 'min_adm_date': f"{args.condition}_ever"})
     
@@ -257,6 +272,9 @@ def main(args):
         df.to_csv(output_file)
 
     print(f"## Output file written to {output_file}")
+    
+    #close connection
+    conn.close()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -281,15 +299,11 @@ if __name__ == "__main__":
                         choices=["parquet", "feather", "csv"]
                        )           
     parser.add_argument("--output_prefix", 
-                    default = "../data/intermediate/scratch/prev_hosp"
+                    default = "./data/intermediate/prev_hosp/prev_hosp"
                    )   
     parser.add_argument("--first_year", 
                         default = 2000
-                       ) 
-    parser.add_argument("--claims_criteria", 
-                        default = "all", 
-                        choices=["all", "primary", "first_two"]
-                       ) 
+                       )
     args = parser.parse_args()
     
     main(args)
